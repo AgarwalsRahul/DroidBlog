@@ -26,6 +26,7 @@ import com.rahul.openapi.util.setUpNavigation
 import com.rahul.openapi.viewModels.ViewModelProviderFactory
 import com.google.android.material.appbar.AppBarLayout
 import com.google.android.material.bottomnavigation.BottomNavigationView
+import com.rahul.openapi.util.BOTTOM_NAV_BACKSTACK_KEY
 import kotlinx.android.synthetic.main.activity_main.*
 import kotlinx.android.synthetic.main.activity_main.progress_bar
 import javax.inject.Inject
@@ -138,6 +139,7 @@ class MainActivity : BaseActivity(),
 
     override fun onSaveInstanceState(outState: Bundle) {
         outState.putParcelable(AUTH_TOKEN_BUNDLE_KEY,sessionManager.cachedToken.value)
+        outState.putIntArray(BOTTOM_NAV_BACKSTACK_KEY,bottomNavController.navigationBackStack.toIntArray())
         super.onSaveInstanceState(outState)
     }
 
@@ -146,6 +148,7 @@ class MainActivity : BaseActivity(),
             (inState[AUTH_TOKEN_BUNDLE_KEY] as AuthToken?) ?.let {
                 sessionManager.setValue(it)
             }
+
         }
 
     }
@@ -158,7 +161,14 @@ class MainActivity : BaseActivity(),
         bottomNavigationView = findViewById(R.id.bottom_navigation_view)
         bottomNavigationView.setUpNavigation(bottomNavController, this)
         if (savedInstanceState == null) {
+            bottomNavController.setupBottomNavigationBackStack(null)
             bottomNavController.onNavigationItemSelected()
+        }else{
+            (savedInstanceState[BOTTOM_NAV_BACKSTACK_KEY] as IntArray?)?.let {
+                val backstack = BottomNavController.BackStack()
+                backstack.addAll(it.toTypedArray())
+                bottomNavController.setupBottomNavigationBackStack(backstack)
+            }
         }
         restoreSession(savedInstanceState)
         subscribeObservers()
