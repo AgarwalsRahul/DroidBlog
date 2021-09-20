@@ -6,6 +6,7 @@ import android.util.Log
 import android.view.MenuItem
 import android.view.View
 import androidx.fragment.app.Fragment
+import androidx.fragment.app.FragmentFactory
 import androidx.lifecycle.Observer
 import androidx.navigation.NavController
 import com.bumptech.glide.RequestManager
@@ -23,57 +24,54 @@ import com.rahul.openapi.ui.main.blog.ViewBlogFragment
 import com.rahul.openapi.ui.main.create_blog.BaseCreateBlogFragment
 import com.rahul.openapi.util.BottomNavController
 import com.rahul.openapi.util.setUpNavigation
-import com.rahul.openapi.viewModels.ViewModelProviderFactory
+import com.rahul.openapi.viewModels.AuthViewModelFactory
 import com.google.android.material.appbar.AppBarLayout
 import com.google.android.material.bottomnavigation.BottomNavigationView
+import com.rahul.openapi.BaseApplication
 import com.rahul.openapi.util.BOTTOM_NAV_BACKSTACK_KEY
 import kotlinx.android.synthetic.main.activity_main.*
-import kotlinx.android.synthetic.main.activity_main.progress_bar
 import javax.inject.Inject
+import javax.inject.Named
 
 class MainActivity : BaseActivity(),
-    BottomNavController.NavGraphProvider,
+
     BottomNavController.OnNavigationGraphChanged,
-    BottomNavController.OnNavigationReselectedListener, MainDependencyProvider {
+    BottomNavController.OnNavigationReselectedListener {
     private val TAG = "AppDebug"
+
+
+    override fun inject() {
+        (application as BaseApplication).mainComponent().inject(this)
+    }
+
+
     private lateinit var bottomNavigationView: BottomNavigationView
 
+
+
     @Inject
-    lateinit var providerFactory: ViewModelProviderFactory
+    @Named("AccountFragmentFactory")
+    lateinit var accountFragmentFactory: FragmentFactory
 
     @Inject
-    lateinit var requestManager: RequestManager
+    @Named("BlogFragmentFactory")
+    lateinit var blogFragmentFactory: FragmentFactory
 
-
-    override fun getViewModelProviderFactory() = providerFactory
-
-    override fun getGlideRequestManager() = requestManager
+    @Inject
+    @Named("CreateBlogFragmentFactory")
+    lateinit var createBlogFragmentFactory: FragmentFactory
 
 
     private val bottomNavController by lazy(LazyThreadSafetyMode.NONE) {
         BottomNavController(
             this,
-            R.id.main_nav_host_fragment,
-            R.id.nav_blog,
+            R.id.main_fragments_container,
+            R.id.menu_nav_blog,
             this,
-            this
         )
     }
 
-    override fun getNavGraphId(itemId: Int) = when (itemId) {
-        R.id.nav_blog -> {
-            R.navigation.nav_blog
-        }
-        R.id.nav_create_blog -> {
-            R.navigation.nav_create_blog
-        }
-        R.id.nav_account -> {
-            R.navigation.nav_account
-        }
-        else -> {
-            R.navigation.nav_blog
-        }
-    }
+
 
     override fun onGraphChange() {
         cancelActiveJobs()
@@ -138,14 +136,17 @@ class MainActivity : BaseActivity(),
     }
 
     override fun onSaveInstanceState(outState: Bundle) {
-        outState.putParcelable(AUTH_TOKEN_BUNDLE_KEY,sessionManager.cachedToken.value)
-        outState.putIntArray(BOTTOM_NAV_BACKSTACK_KEY,bottomNavController.navigationBackStack.toIntArray())
+        outState.putParcelable(AUTH_TOKEN_BUNDLE_KEY, sessionManager.cachedToken.value)
+        outState.putIntArray(
+            BOTTOM_NAV_BACKSTACK_KEY,
+            bottomNavController.navigationBackStack.toIntArray()
+        )
         super.onSaveInstanceState(outState)
     }
 
-    private fun restoreSession(saverInstanceBundle: Bundle?){
-        saverInstanceBundle?.let { inState->
-            (inState[AUTH_TOKEN_BUNDLE_KEY] as AuthToken?) ?.let {
+    private fun restoreSession(saverInstanceBundle: Bundle?) {
+        saverInstanceBundle?.let { inState ->
+            (inState[AUTH_TOKEN_BUNDLE_KEY] as AuthToken?)?.let {
                 sessionManager.setValue(it)
             }
 
@@ -154,6 +155,7 @@ class MainActivity : BaseActivity(),
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        inject()
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
@@ -163,7 +165,7 @@ class MainActivity : BaseActivity(),
         if (savedInstanceState == null) {
             bottomNavController.setupBottomNavigationBackStack(null)
             bottomNavController.onNavigationItemSelected()
-        }else{
+        } else {
             (savedInstanceState[BOTTOM_NAV_BACKSTACK_KEY] as IntArray?)?.let {
                 val backstack = BottomNavController.BackStack()
                 backstack.addAll(it.toTypedArray())
@@ -196,6 +198,7 @@ class MainActivity : BaseActivity(),
         val intent = Intent(this, AuthActivity::class.java)
         startActivity(intent)
         finish()
+        (application as BaseApplication).releaseMainComponent()
     }
 
     override fun displayProgressBar(boolean: Boolean) {

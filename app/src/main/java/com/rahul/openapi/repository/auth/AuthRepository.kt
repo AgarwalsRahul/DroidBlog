@@ -12,6 +12,7 @@ import com.rahul.openapi.ui.auth.state.AuthViewState
 import javax.inject.Inject
 import com.rahul.openapi.api.auth.network_responses.LoginResponse
 import com.rahul.openapi.api.auth.network_responses.RegistrationResponse
+import com.rahul.openapi.di.auth.AuthScope
 import com.rahul.openapi.models.AccountProperties
 import com.rahul.openapi.models.AuthToken
 import com.rahul.openapi.repository.JobManager
@@ -29,6 +30,8 @@ import com.rahul.openapi.util.PreferenceKeys
 import com.rahul.openapi.util.SuccessHandling.Companion.RESPONSE_CHECK_PREVIOUS_AUTH_USER_DONE
 import kotlinx.coroutines.Job
 
+
+@AuthScope
 class AuthRepository @Inject constructor(
     val authTokenDao: AuthTokenDao,
     val accountPropertiesDao: AccountPropertiesDao,

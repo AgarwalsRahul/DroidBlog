@@ -3,11 +3,14 @@ package com.rahul.openapi.api.auth
 import androidx.lifecycle.LiveData
 import com.rahul.openapi.api.auth.network_responses.LoginResponse
 import com.rahul.openapi.api.auth.network_responses.RegistrationResponse
+import com.rahul.openapi.di.auth.AuthScope
 import com.rahul.openapi.util.GenericApiResponse
 import retrofit2.http.Field
 import retrofit2.http.FormUrlEncoded
 import retrofit2.http.POST
 
+
+@AuthScope
 interface OpenApiAuthService {
 
     @POST("account/login")

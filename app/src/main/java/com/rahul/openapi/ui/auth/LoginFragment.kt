@@ -4,33 +4,37 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import androidx.fragment.app.Fragment
+import androidx.fragment.app.viewModels
+import androidx.lifecycle.ViewModelProvider
 import com.rahul.openapi.R
+import com.rahul.openapi.di.auth.AuthScope
 import com.rahul.openapi.ui.auth.state.AuthStateEvent
 import com.rahul.openapi.ui.auth.state.LoginFields
 import kotlinx.android.synthetic.main.fragment_login.*
+import javax.inject.Inject
 
+@AuthScope
+class LoginFragment @Inject constructor(private val viewModelProviderFactory: ViewModelProvider.Factory) :
+    Fragment(R.layout.fragment_login) {
 
-class LoginFragment : BaseAuthFragment() {
+    val viewModel: AuthViewModel by viewModels {
+        viewModelProviderFactory
+    }
+
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
+        viewModel.cancelActiveJobs()
     }
 
-    override fun onCreateView(
-        inflater: LayoutInflater, container: ViewGroup?,
-        savedInstanceState: Bundle?
-    ): View? {
-        // Inflate the layout for this fragment
-        return inflater.inflate(R.layout.fragment_login, container, false)
-    }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         subscribeObservers()
 
         login_button.setOnClickListener {
-           login()
+            login()
         }
     }
 

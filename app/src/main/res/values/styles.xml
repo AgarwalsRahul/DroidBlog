@@ -9,6 +9,7 @@
         <item name="colorAccent">@color/colorAccent</item>
         <item name="md_color_button_text">@color/tealDark</item>
         <item name="android:windowLightStatusBar" tools:targetApi="23">true</item>
+
     </style>
 
 

@@ -5,5 +5,5 @@ import javax.inject.Scope
     Auth Scope is strictly for login and registration
  */
 @Scope
-@Retention(AnnotationRetention.RUNTIME)
+@kotlin.annotation.Retention(AnnotationRetention.RUNTIME)
 annotation class AuthScope()

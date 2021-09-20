@@ -4,12 +4,15 @@ import androidx.lifecycle.LiveData
 import com.rahul.openapi.api.GenericResponse
 import com.rahul.openapi.api.main.network_responses.BlogCreateUpdateResponse
 import com.rahul.openapi.api.main.network_responses.BlogListSearchResponse
+import com.rahul.openapi.di.main.MainScope
 import com.rahul.openapi.models.AccountProperties
 import com.rahul.openapi.util.GenericApiResponse
 import okhttp3.MultipartBody
 import okhttp3.RequestBody
 import retrofit2.http.*
 
+
+@MainScope
 interface OpenApiMainService {
 
     @GET("account/properties")

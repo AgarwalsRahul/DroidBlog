@@ -1,25 +1,22 @@
 package com.rahul.openapi.di
 
 import android.app.Application
-import com.rahul.openapi.BaseApplication
+import com.rahul.openapi.di.auth.AuthComponent
+import com.rahul.openapi.di.main.MainComponent
 import com.rahul.openapi.session.SessionManager
+import com.rahul.openapi.ui.BaseActivity
 import dagger.BindsInstance
 import dagger.Component
-import dagger.android.AndroidInjectionModule
-import dagger.android.AndroidInjector
 import javax.inject.Singleton
 
 
 @Singleton
 @Component(
     modules = [
-        AndroidInjectionModule::class,
-        AppModule::class,
-        ActivityBuildersModule::class,
-        ViewModelFactoryModule::class
+        AppModule::class, SubComponentsModule::class
     ]
 )
-interface AppComponent : AndroidInjector<BaseApplication> {
+interface AppComponent {
 
     val sessionManager: SessionManager // must add here b/c injecting into abstract class
 
@@ -31,4 +28,10 @@ interface AppComponent : AndroidInjector<BaseApplication> {
 
         fun build(): AppComponent
     }
+
+    fun inject(baseActivity: BaseActivity)
+
+    fun authComponent(): AuthComponent.Factory
+
+    fun mainComponent(): MainComponent.Factory
 }

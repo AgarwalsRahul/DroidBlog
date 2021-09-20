@@ -4,6 +4,7 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.Transformations
 import com.rahul.openapi.api.GenericResponse
 import com.rahul.openapi.api.main.OpenApiMainService
+import com.rahul.openapi.di.main.MainScope
 import com.rahul.openapi.models.AccountProperties
 import com.rahul.openapi.models.AuthToken
 import com.rahul.openapi.persistence.AccountPropertiesDao
@@ -21,6 +22,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
 
+@MainScope
 class AccountRepository @Inject constructor(
     val accountPropertiesDao: AccountPropertiesDao,
     val openApiMainService: OpenApiMainService,

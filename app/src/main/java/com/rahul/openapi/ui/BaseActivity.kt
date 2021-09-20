@@ -2,24 +2,37 @@ package com.rahul.openapi.ui
 
 import android.content.Context
 import android.content.pm.PackageManager
+import android.os.Bundle
 import android.util.Log
 import android.view.inputmethod.InputMethodManager
+import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import com.rahul.openapi.BaseApplication
 import com.rahul.openapi.session.SessionManager
 import com.rahul.openapi.util.Constants
-import dagger.android.support.DaggerAppCompatActivity
+
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
-abstract class BaseActivity : DaggerAppCompatActivity(), DataStateChangeListener,
+abstract class BaseActivity : AppCompatActivity(), DataStateChangeListener,
     UICommunicationListener {
     private val TAG = "AppDebug"
 
+
+    abstract  fun inject()
+
     @Inject
     lateinit var sessionManager: SessionManager
+
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        (application as BaseApplication).appComponent
+            .inject(this)
+        super.onCreate(savedInstanceState)
+    }
 
     override fun onDataStateChanged(dataState: DataState<*>?) {
         dataState?.let {

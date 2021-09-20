@@ -7,6 +7,7 @@ import com.rahul.openapi.api.GenericResponse
 import com.rahul.openapi.api.main.OpenApiMainService
 import com.rahul.openapi.api.main.network_responses.BlogCreateUpdateResponse
 import com.rahul.openapi.api.main.network_responses.BlogListSearchResponse
+import com.rahul.openapi.di.main.MainScope
 import com.rahul.openapi.models.AuthToken
 import com.rahul.openapi.models.BlogPost
 import com.rahul.openapi.persistence.BlogPostDao
@@ -35,6 +36,7 @@ import okhttp3.MultipartBody
 import okhttp3.RequestBody
 import javax.inject.Inject
 
+@MainScope
 class BlogRepository @Inject constructor(
     val openApiMainService: OpenApiMainService,
     val blogPostDao: BlogPostDao,
