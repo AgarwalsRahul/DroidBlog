@@ -1,5 +1,3 @@
-<h1>DroidBlog- A Blog App</h1>
-
 # DroidBlog- A Blog App
 **Droid Blog**- a **Blog** App that allows the user to create the blog and to view the blogs created by others and also allows to search for a particular blog post with author name and blog title. 
 
