@@ -26,4 +26,4 @@ This app aims to demonstrate **advanced android concepts** which are the followi
 * **Material Design**
 * **Network Request Management**
   1. Cancelling pending network requests using Kotlin coroutines
-
+* **REST API AUTHENTICATION**
