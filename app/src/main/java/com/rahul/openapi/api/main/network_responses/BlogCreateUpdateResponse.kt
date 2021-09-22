@@ -2,6 +2,8 @@ package com.rahul.openapi.api.main.network_responses
 
 import com.google.gson.annotations.Expose
 import com.google.gson.annotations.SerializedName
+import com.rahul.openapi.models.BlogPost
+import com.rahul.openapi.util.DateUtils
 
 class BlogCreateUpdateResponse(
 
@@ -42,5 +44,18 @@ class BlogCreateUpdateResponse(
     var username: String
 
 
-
-)
+) {
+    fun toBlogPost(): BlogPost {
+        return BlogPost(
+            pk = pk,
+            title = title,
+            slug = slug,
+            body = body,
+            image = image,
+            date_updated = DateUtils.convertServerStringDateToLong(
+                date_updated
+            ),
+            username = username
+        )
+    }
+}

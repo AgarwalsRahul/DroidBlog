@@ -1,9 +1,11 @@
 package com.rahul.openapi.ui.auth
 
+
+import android.annotation.SuppressLint
 import android.content.Context
 import android.os.Bundle
 import android.util.Log
-import android.view.View
+import android.view.*
 import android.view.animation.TranslateAnimation
 import android.webkit.JavascriptInterface
 import android.webkit.WebView
@@ -12,47 +14,54 @@ import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.ViewModelProvider
 import androidx.navigation.fragment.findNavController
+
 import com.rahul.openapi.R
 import com.rahul.openapi.di.auth.AuthScope
-import com.rahul.openapi.ui.DataState
-import com.rahul.openapi.ui.DataStateChangeListener
-import com.rahul.openapi.ui.Response
-import com.rahul.openapi.ui.ResponseType
-import com.rahul.openapi.util.Constants
+import com.rahul.openapi.ui.*
+import com.rahul.openapi.ui.auth.ForgotPasswordFragment.WebAppInterface.*
+import com.rahul.openapi.util.*
 import kotlinx.android.synthetic.main.fragment_forgot_password.*
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers.Main
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
-
+@FlowPreview
+@ExperimentalCoroutinesApi
 @AuthScope
-class ForgotPasswordFragment @Inject constructor(private val viewModelProviderFactory: ViewModelProvider.Factory) :
-    Fragment(R.layout.fragment_forgot_password) {
-    private val TAG = "AppDebug"
-    private lateinit var webView: WebView
+class ForgotPasswordFragment
+@Inject
+constructor(
+    private val viewModelFactory: ViewModelProvider.Factory
+): Fragment(R.layout.fragment_forgot_password) {
 
-    lateinit var stateChangeListener: DataStateChangeListener
+    private val TAG: String = "AppDebug"
 
-    val viewModel: AuthViewModel by viewModels {
-        viewModelProviderFactory
+    val viewModel: AuthViewModel by viewModels{
+        viewModelFactory
     }
 
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        viewModel.cancelActiveJobs()
-    }
+    lateinit var webView: WebView
 
-    private val webInteractionCallback = object : WebAppInterface.OnWebInteractionCallback {
+    lateinit var uiCommunicationListener: UICommunicationListener
+
+    val webInteractionCallback = object: OnWebInteractionCallback {
 
         override fun onError(errorMessage: String) {
             Log.e(TAG, "onError: $errorMessage")
-
-            val dataState = DataState.error<Any>(
-                response = Response(errorMessage, ResponseType.Dialog())
-            )
-            stateChangeListener.onDataStateChanged(
-                dataState
+            uiCommunicationListener.onResponseReceived(
+                response = Response(
+                    message = errorMessage,
+                    uiComponentType = UIComponentType.Dialog(),
+                    messageType = MessageType.Error()
+                ),
+                stateMessageCallback = object: StateMessageCallback{
+                    override fun removeMessageFromStack() {
+                        viewModel.clearStateMessage()
+                    }
+                }
             )
         }
 
@@ -63,14 +72,14 @@ class ForgotPasswordFragment @Inject constructor(private val viewModelProviderFa
 
         override fun onLoading(isLoading: Boolean) {
             Log.d(TAG, "onLoading... ")
-            CoroutineScope(Main).launch {
-                stateChangeListener.onDataStateChanged(
-                    DataState.loading(isLoading = isLoading, cachedData = null)
-                )
-            }
+            uiCommunicationListener.displayProgressBar(isLoading)
         }
     }
 
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        viewModel.cancelActiveJobs()
+    }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
@@ -83,29 +92,21 @@ class ForgotPasswordFragment @Inject constructor(private val viewModelProviderFa
         }
     }
 
-    private fun loadPasswordResetWebView() {
-        stateChangeListener.onDataStateChanged(
-            DataState.loading(
-                isLoading = true,
-                cachedData = null
-            )
-        )
-        webView.webViewClient = object : WebViewClient() {
+    @SuppressLint("SetJavaScriptEnabled")
+    fun loadPasswordResetWebView(){
+        uiCommunicationListener.displayProgressBar(true)
+        webView.webViewClient = object: WebViewClient(){
             override fun onPageFinished(view: WebView?, url: String?) {
                 super.onPageFinished(view, url)
-                stateChangeListener.onDataStateChanged(
-                    DataState.loading(isLoading = false, cachedData = null)
-                )
+                uiCommunicationListener.displayProgressBar(false)
             }
         }
         webView.loadUrl(Constants.PASSWORD_RESET_URL)
         webView.settings.javaScriptEnabled = true
-        webView.addJavascriptInterface(
-            WebAppInterface(webInteractionCallback),
-            "AndroidTextListener"
-        )
-
+        webView.addJavascriptInterface(WebAppInterface(webInteractionCallback), "AndroidTextListener")
     }
+
+
 
     class WebAppInterface
     constructor(
@@ -129,7 +130,7 @@ class ForgotPasswordFragment @Inject constructor(private val viewModelProviderFa
             callback.onLoading(isLoading)
         }
 
-        interface OnWebInteractionCallback {
+        interface OnWebInteractionCallback{
 
             fun onSuccess(email: String)
 
@@ -139,8 +140,8 @@ class ForgotPasswordFragment @Inject constructor(private val viewModelProviderFa
         }
     }
 
-    fun onPasswordResetLinkSent() {
-        CoroutineScope(Main).launch {
+    fun onPasswordResetLinkSent(){
+        CoroutineScope(Main).launch{
             parent_view.removeView(webView)
             webView.destroy()
 
@@ -156,14 +157,12 @@ class ForgotPasswordFragment @Inject constructor(private val viewModelProviderFa
         }
     }
 
-
     override fun onAttach(context: Context) {
         super.onAttach(context)
-        try {
-            stateChangeListener = context as DataStateChangeListener
-        } catch (e: ClassCastException) {
-            Log.e(TAG, "$context must implement DataStateChangeListener")
+        try{
+            uiCommunicationListener = context as UICommunicationListener
+        }catch(e: ClassCastException){
+            Log.e(TAG, "$context must implement UICommunicationListener" )
         }
     }
-
 }

@@ -1,5 +1,6 @@
 package com.rahul.openapi.ui
 
+import android.Manifest
 import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Bundle
@@ -8,25 +9,25 @@ import android.view.inputmethod.InputMethodManager
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import com.afollestad.materialdialogs.MaterialDialog
 import com.rahul.openapi.BaseApplication
 import com.rahul.openapi.session.SessionManager
-import com.rahul.openapi.util.Constants
-
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.GlobalScope
-import kotlinx.coroutines.launch
+import com.rahul.openapi.util.*
+import com.rahul.openapi.util.Constants.Companion.PERMISSIONS_REQUEST_READ_STORAGE
 import javax.inject.Inject
 
-abstract class BaseActivity : AppCompatActivity(), DataStateChangeListener,
-    UICommunicationListener {
-    private val TAG = "AppDebug"
+abstract class BaseActivity: AppCompatActivity(),
+    UICommunicationListener
+{
 
+    val TAG: String = "AppDebug"
 
-    abstract  fun inject()
+    private val dialogs: HashMap<String, MaterialDialog> = HashMap()
 
     @Inject
     lateinit var sessionManager: SessionManager
 
+    abstract fun inject()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         (application as BaseApplication).appComponent
@@ -34,100 +35,123 @@ abstract class BaseActivity : AppCompatActivity(), DataStateChangeListener,
         super.onCreate(savedInstanceState)
     }
 
-    override fun onDataStateChanged(dataState: DataState<*>?) {
-        dataState?.let {
-            GlobalScope.launch(Dispatchers.Main) {
-                displayProgressBar(it.loading.isLoading)
-                it.error?.let { errorEvent ->
-                    handleStateError(errorEvent)
-                }
+    override fun onResponseReceived(
+        response: Response,
+        stateMessageCallback: StateMessageCallback
+    ) {
 
-                it.data?.let {
-                    it.response?.let { responseEvent ->
-                        handleStateResponse(responseEvent)
+        when(response.uiComponentType){
+
+            is UIComponentType.AreYouSureDialog -> {
+
+                response.message?.let {
+                    areYouSureDialog(
+                        message = it,
+                        callback = response.uiComponentType.callback,
+                        stateMessageCallback = stateMessageCallback
+                    )
+                }
+            }
+
+            is UIComponentType.Toast -> {
+                response.message?.let {
+                    displayToast(
+                        message = it,
+                        stateMessageCallback = stateMessageCallback
+                    )
+                }
+            }
+
+            is UIComponentType.Dialog -> {
+                displayDialog(
+                    response = response,
+                    stateMessageCallback = stateMessageCallback
+                )
+            }
+
+            is UIComponentType.None -> {
+                // This would be a good place to send to your Error Reporting
+                // software of choice (ex: Firebase crash reporting)
+                Log.i(TAG, "onResponseReceived: ${response.message}")
+                stateMessageCallback.removeMessageFromStack()
+            }
+        }
+    }
+
+    private fun displayDialog(
+        response: Response,
+        stateMessageCallback: StateMessageCallback
+    ){
+        response.message?.let { message ->
+
+            if(!dialogs.containsKey(message)){
+                when (response.messageType) {
+
+                    is MessageType.Error -> {
+                        displayErrorDialog(
+                            message = message,
+                            stateMessageCallback = stateMessageCallback
+                        )
+                    }
+
+                    is MessageType.Success -> {
+                        displaySuccessDialog(
+                            message = message,
+                            stateMessageCallback = stateMessageCallback
+                        )
+                    }
+
+                    is MessageType.Info -> {
+                        displayInfoDialog(
+                            message = message,
+                            stateMessageCallback = stateMessageCallback
+                        )
+                    }
+
+                    else -> {
+                        // do nothing
+                        stateMessageCallback.removeMessageFromStack()
                     }
                 }
             }
-        }
+            else{
+                stateMessageCallback.removeMessageFromStack()
+            }
+        }?: stateMessageCallback.removeMessageFromStack()
     }
 
-    override fun onUIMessageRecieved(uiMessage: UIMessage) {
-        when (uiMessage.uiMessageType) {
-            is UIMessageType.Toast -> {
-                displayToast(uiMessage.message)
-            }
-            is UIMessageType.Dialog -> {
-                displayInfoDialog(uiMessage.message)
-            }
-            is UIMessageType.AreYouSureDialog -> {
-                areYouSureDialog(uiMessage.message, uiMessage.uiMessageType.callback)
-            }
-            is UIMessageType.None -> {
-                Log.i(TAG, "onUIMessageReceived ${uiMessage.message}")
-            }
-        }
-    }
+    abstract override fun displayProgressBar(isLoading: Boolean)
 
     override fun hideSoftKeyboard() {
         if (currentFocus != null) {
-            val inputMethodManager =
-                getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
-            inputMethodManager.hideSoftInputFromWindow(currentFocus!!.windowToken, 0)
+            val inputMethodManager = getSystemService(
+                Context.INPUT_METHOD_SERVICE) as InputMethodManager
+            inputMethodManager
+                .hideSoftInputFromWindow(currentFocus!!.windowToken, 0)
         }
     }
 
-    private fun handleStateResponse(responseEvent: Event<Response>) {
-        responseEvent.getContentIfNotHandled()?.let {
-            when (it.responseType) {
-                is ResponseType.Dialog -> displaySuccessDialog(it.message)
-                is ResponseType.Toast -> it.message?.let { msg ->
-                    displayToast(msg)
-                }
-                is ResponseType.None -> {
-                    Log.d(TAG, "handleStateResponse:${it.message}")
-                }
-                else -> {
-                }
-            }
-        }
-    }
+    override fun isStoragePermissionGranted(): Boolean{
+        if (
+            ContextCompat.checkSelfPermission(this,
+                Manifest.permission.READ_EXTERNAL_STORAGE)
+            != PackageManager.PERMISSION_GRANTED &&
+            ContextCompat.checkSelfPermission(this,
+                Manifest.permission.WRITE_EXTERNAL_STORAGE)
+            != PackageManager.PERMISSION_GRANTED  ) {
 
-    private fun handleStateError(errorEvent: Event<StateError>) {
-        errorEvent.getContentIfNotHandled()?.let {
-            when (it.response.responseType) {
-                is ResponseType.Dialog -> displayErrorDialog(it.response.message)
-                is ResponseType.Toast -> it.response.message?.let { msg ->
-                    displayToast(msg)
-                }
-                is ResponseType.None -> {
-                    Log.e(TAG, "handleStateError:${it.response.message}")
-                }
-                else -> {
-                }
-            }
-        }
-    }
 
-    abstract fun displayProgressBar(boolean: Boolean)
-
-    override fun isStoragePermissionGranted(): Boolean {
-        if (ContextCompat.checkSelfPermission(
-                this,
-                android.Manifest.permission.READ_EXTERNAL_STORAGE
-            ) != PackageManager.PERMISSION_GRANTED && ContextCompat.checkSelfPermission(
-                this,
-                android.Manifest.permission.WRITE_EXTERNAL_STORAGE
-            ) != PackageManager.PERMISSION_GRANTED
-        ) {
-            ActivityCompat.requestPermissions(
-                this, arrayOf(
-                    android.Manifest.permission.READ_EXTERNAL_STORAGE,
-                    android.Manifest.permission.WRITE_EXTERNAL_STORAGE,
-                ), Constants.PERMISSIONS_REQUEST_READ_STORAGE
+            ActivityCompat.requestPermissions(this,
+                arrayOf(
+                    Manifest.permission.READ_EXTERNAL_STORAGE,
+                    Manifest.permission.WRITE_EXTERNAL_STORAGE
+                ),
+                PERMISSIONS_REQUEST_READ_STORAGE
             )
-            return false
 
+            return false
         } else {
+            // Permission has already been granted
             return true
         }
     }

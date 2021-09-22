@@ -1,14 +1,42 @@
 package com.rahul.openapi.ui.auth.state
 
-sealed class AuthStateEvent {
+import com.rahul.openapi.util.StateEvent
 
-    data class LoginEvent(val email: String, val password: String) : AuthStateEvent()
-    data class RegisterEvent(
-        val email: String, val username: String,
-        val password: String, val confirm_password: String
-    ) : AuthStateEvent()
+sealed class AuthStateEvent : StateEvent {
 
-    class checkPreviousAuthEvent : AuthStateEvent()
+    data class LoginAttemptEvent(
+        val email: String,
+        val password: String
+    ) : AuthStateEvent() {
 
-    class None:AuthStateEvent()
+        override fun errorInfo(): String {
+            return "Login attempt failed."
+        }
+    }
+
+    data class RegisterAttemptEvent(
+        val email: String,
+        val username: String,
+        val password: String,
+        val confirm_password: String
+    ) : AuthStateEvent() {
+
+        override fun errorInfo(): String {
+            return "Register attempt failed."
+        }
+    }
+
+    class CheckPreviousAuthEvent() : AuthStateEvent() {
+
+        override fun errorInfo(): String {
+            return "Error checking for previously authenticated user."
+        }
+    }
+
+    class None : AuthStateEvent() {
+
+        override fun errorInfo(): String {
+            return "None"
+        }
+    }
 }

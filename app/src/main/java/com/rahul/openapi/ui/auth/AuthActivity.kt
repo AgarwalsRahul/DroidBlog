@@ -6,26 +6,28 @@ import android.util.Log
 import android.view.View
 import androidx.activity.viewModels
 import androidx.fragment.app.FragmentFactory
+import androidx.lifecycle.Observer
 import androidx.lifecycle.ViewModelProvider
 import com.rahul.openapi.BaseApplication
 import com.rahul.openapi.R
-import com.rahul.openapi.fragments.auth.AuthFragmentFactory
 import com.rahul.openapi.fragments.auth.AuthNavHostFragment
 import com.rahul.openapi.ui.BaseActivity
-import com.rahul.openapi.ui.auth.state.AuthStateEvent
+import com.rahul.openapi.ui.StateMessageCallback
+import com.rahul.openapi.ui.auth.state.AuthStateEvent.CheckPreviousAuthEvent
 import com.rahul.openapi.ui.main.MainActivity
 import com.rahul.openapi.util.SuccessHandling.Companion.RESPONSE_CHECK_PREVIOUS_AUTH_USER_DONE
 import kotlinx.android.synthetic.main.activity_auth.*
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.FlowPreview
 import javax.inject.Inject
 
-class AuthActivity : BaseActivity() {
-    companion object {
-        private const val TAG = "AppDebug"
-    }
+@FlowPreview
+@ExperimentalCoroutinesApi
+class AuthActivity : BaseActivity()
+{
 
     @Inject
-    lateinit var fragmentFactory: AuthFragmentFactory
-
+    lateinit var fragmentFactory: FragmentFactory
 
     @Inject
     lateinit var providerFactory: ViewModelProvider.Factory
@@ -34,23 +36,34 @@ class AuthActivity : BaseActivity() {
         providerFactory
     }
 
-    override fun inject() {
-        (application as BaseApplication).authComponent().inject(this)
+    override fun onCreate(savedInstanceState: Bundle?) {
+        inject()
+        super.onCreate(savedInstanceState)
+        setContentView(R.layout.activity_auth)
+        subscribeObservers()
+        onRestoreInstanceState()
+        viewModel.setupChannel()
     }
 
+    private fun onRestoreInstanceState(){
+        val host = supportFragmentManager.findFragmentById(R.id.auth_fragments_container)
+        host?.let {
+            // do nothing
+        } ?: createNavHost()
+    }
 
-    override fun onCreate(savedInstanceState: Bundle?) {
-
-        inject()
-
-
-
-        super.onCreate(savedInstanceState)
-        Log.d(TAG, "$fragmentFactory")
-        setContentView(R.layout.activity_auth)
-
-        subscribeObserver()
-        onRestoreInstanceSate()
+    private fun createNavHost(){
+        val navHost = AuthNavHostFragment.create(
+            R.navigation.auth_nav_graph
+        )
+        supportFragmentManager.beginTransaction()
+            .replace(
+                R.id.auth_fragments_container,
+                navHost,
+                "AuthNavHost"
+            )
+            .setPrimaryNavigationFragment(navHost)
+            .commit()
     }
 
     override fun onResume() {
@@ -58,88 +71,82 @@ class AuthActivity : BaseActivity() {
         checkPreviousAuthUser()
     }
 
-    private fun subscribeObserver() {
-        viewModel.dataState.observe(this, {
-            onDataStateChanged(it)
-            it?.let {
-                it.data?.let { data ->
-                    data.data?.let { event ->
-                        event.getContentIfNotHandled()?.let { authViewState ->
-                            authViewState.authToken?.let { token ->
+    private fun subscribeObservers(){
 
-                                viewModel.setAuthToken(token)
-                            }
-                        }
-                    }
-                    data.response?.let { event ->
-                        event.peekContent().let { response ->
-                            response.message?.let { message ->
-                                if (message.equals(RESPONSE_CHECK_PREVIOUS_AUTH_USER_DONE)) {
-                                    onFinishCheckPreviousAuthUser()
-                                }
-                            }
-                        }
-                    }
-                }
-
-
-            }
-
-        })
-
-        viewModel.viewState.observe(this, { authViewState ->
-            authViewState.authToken?.let {
+        viewModel.viewState.observe(this, Observer{ viewState ->
+            Log.d(TAG, "AuthActivity, subscribeObservers: AuthViewState: ${viewState}")
+            viewState.authToken?.let{
                 sessionManager.login(it)
             }
         })
-        sessionManager.cachedToken.observe(this, { authToken ->
-            if (authToken != null && authToken.account_pk != -1 && authToken.token != null) {
-                navMainActivity()
 
+        viewModel.numActiveJobs.observe(this, Observer { jobCounter ->
+            Log.d(TAG, "active jobs: ${jobCounter}")
+            displayProgressBar(viewModel.areAnyJobsActive())
+        })
+
+        viewModel.stateMessage.observe(this, Observer { stateMessage ->
+
+            stateMessage?.let {
+                if(it.response.message.equals(RESPONSE_CHECK_PREVIOUS_AUTH_USER_DONE)){
+                    onFinishCheckPreviousAuthUser()
+                }
+                onResponseReceived(
+                    response = it.response,
+                    stateMessageCallback = object: StateMessageCallback {
+                        override fun removeMessageFromStack() {
+                            viewModel.clearStateMessage()
+                        }
+                    }
+                )
+            }
+        })
+
+        sessionManager.cachedToken.observe(this, Observer{ dataState ->
+            Log.d(TAG, "AuthActivity, subscribeObservers: AuthDataState: ${dataState}")
+            dataState.let{ authToken ->
+                if(authToken != null && authToken.account_pk != -1 && authToken.token != null){
+                    navMainActivity()
+                }
             }
         })
     }
 
-    private fun onRestoreInstanceSate() {
-        val host = supportFragmentManager.findFragmentById(R.id.auth_fragments_container)
-        host?.let {
-            //do nothing
-        } ?: createNavHost()
-    }
-
-    private fun createNavHost() {
-        val navHost = AuthNavHostFragment.create(R.navigation.auth_nav_graph)
-        supportFragmentManager.beginTransaction()
-            .replace(R.id.auth_fragments_container, navHost, "AuthNavHost")
-            .setPrimaryNavigationFragment(navHost)
-            .commit()
-    }
-
-    private fun onFinishCheckPreviousAuthUser() {
-        fragment_container.visibility = View.VISIBLE
-    }
-
-
-    private fun navMainActivity() {
+    fun navMainActivity(){
+        Log.d(TAG, "navMainActivity: called.")
         val intent = Intent(this, MainActivity::class.java)
         startActivity(intent)
         finish()
         (application as BaseApplication).releaseAuthComponent()
     }
 
-    private fun checkPreviousAuthUser() {
-        viewModel.setStateEvent(AuthStateEvent.checkPreviousAuthEvent())
+    private fun checkPreviousAuthUser(){
+        viewModel.setStateEvent(CheckPreviousAuthEvent())
     }
 
-    override fun displayProgressBar(boolean: Boolean) {
-        if (boolean) {
+    private fun onFinishCheckPreviousAuthUser(){
+        fragment_container.visibility = View.VISIBLE
+    }
+
+    override fun inject() {
+        (application as BaseApplication).authComponent()
+            .inject(this)
+    }
+
+    override fun displayProgressBar(isLoading: Boolean){
+        if(isLoading){
             progress_bar.visibility = View.VISIBLE
-        } else {
-            progress_bar.visibility = View.INVISIBLE
+        }
+        else{
+            progress_bar.visibility = View.GONE
         }
     }
 
     override fun expandAppBar() {
-
+        // ignore
     }
+
+
 }
+
+

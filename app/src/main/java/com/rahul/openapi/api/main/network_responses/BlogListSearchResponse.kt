@@ -2,6 +2,7 @@ package com.rahul.openapi.api.main.network_responses
 
 import com.google.gson.annotations.Expose
 import com.google.gson.annotations.SerializedName
+import com.rahul.openapi.models.BlogPost
 
 /**
  * Class for modeling the response when querying https://open-api.xyz/
@@ -18,6 +19,15 @@ class BlogListSearchResponse(
     var detail: String
 ) {
 
+    fun toList(): List<BlogPost>{
+        val blogPostList: ArrayList<BlogPost> = ArrayList()
+        for(blogPostResponse in results){
+            blogPostList.add(
+                blogPostResponse.toBlogPost()
+            )
+        }
+        return blogPostList
+    }
     override fun toString(): String {
         return "BlogListSearchResponse(results=$results, detail='$detail')"
     }

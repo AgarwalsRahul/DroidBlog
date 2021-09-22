@@ -13,5 +13,5 @@ sealed class UIMessageType {
 
     object None : UIMessageType()
 
-    class AreYouSureDialog(val callback: AreyouSureCallback) : UIMessageType()
+    class AreYouSureDialog(val callback: AreYouSureCallback) : UIMessageType()
 }

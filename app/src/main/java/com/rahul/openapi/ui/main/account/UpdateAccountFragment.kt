@@ -4,102 +4,111 @@ import android.os.Bundle
 import android.util.Log
 import android.view.*
 import androidx.fragment.app.viewModels
+import androidx.lifecycle.Observer
 import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.lifecycleScope
 import com.rahul.openapi.R
-import com.rahul.openapi.di.main.MainScope
 import com.rahul.openapi.models.AccountProperties
+import com.rahul.openapi.ui.StateMessageCallback
 import com.rahul.openapi.ui.main.account.state.ACCOUNT_VIEW_STATE_BUNDLE_KEY
 import com.rahul.openapi.ui.main.account.state.AccountStateEvent
 import com.rahul.openapi.ui.main.account.state.AccountViewState
+
 import kotlinx.android.synthetic.main.fragment_update_account.*
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.FlowPreview
 import javax.inject.Inject
 
+@FlowPreview
+@ExperimentalCoroutinesApi
+class UpdateAccountFragment
+@Inject
+constructor(
+    private val viewModelFactory: ViewModelProvider.Factory
+): BaseAccountFragment(R.layout.fragment_update_account) {
 
-@MainScope
-class UpdateAccountFragment @Inject constructor(
-    private val viewModelProviderFactory: ViewModelProvider.Factory,
-) : BaseAccountFragment(R.layout.fragment_update_account ) {
-
-    private val TAG = "AppDebug"
-
-    val viewModel : AccountViewModel by viewModels {
-        viewModelProviderFactory
-    }
-
-
-
-    override fun onSaveInstanceState(outState: Bundle) {
-
-        outState.putParcelable(ACCOUNT_VIEW_STATE_BUNDLE_KEY, viewModel.viewState.value)
-
-        super.onSaveInstanceState(outState)
+    val viewModel: AccountViewModel by viewModels{
+        viewModelFactory
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
-
-        cancelActiveJobs()
-
-        savedInstanceState?.let { state ->
-            (state[ACCOUNT_VIEW_STATE_BUNDLE_KEY] as AccountViewState?)?.let {
-                viewModel.setViewState(it)
+        // Restore state after process death
+        savedInstanceState?.let { inState ->
+            (inState[ACCOUNT_VIEW_STATE_BUNDLE_KEY] as AccountViewState?)?.let { viewState ->
+                viewModel.setViewState(viewState)
             }
         }
     }
-
-    override fun cancelActiveJobs() {
-        viewModel.cancelActiveJobs()
-    }
-
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         setHasOptionsMenu(true)
-        subscribeObserver()
+        subscribeObservers()
     }
 
-    private fun subscribeObserver() {
+    override fun setupChannel() {
+        Log.d(TAG, "setupChannel ")
+        viewModel.setupChannel()
+    }
 
-        viewModel.dataState.observe(viewLifecycleOwner, {
-            dataStateChangeListener.onDataStateChanged(it)
-        })
-        viewModel.viewState.observe(viewLifecycleOwner, { viewState ->
-            viewState?.let {
-                it.accountProperties?.let { accountProperties ->
-                    Log.d(TAG, "UpdateAccountFragment: $accountProperties")
-                    setAccountDetails(accountProperties)
+    private fun subscribeObservers(){
+
+        viewModel.viewState.observe(viewLifecycleOwner, Observer{ viewState ->
+            if(viewState != null){
+                viewState.accountProperties?.let{
+                    Log.d(TAG, "UpdateAccountFragment, ViewState: ${it}")
+                    setAccountDataFields(it)
                 }
+            }
+        })
+
+        viewModel.numActiveJobs.observe(viewLifecycleOwner, Observer { jobCounter ->
+            uiCommunicationListener.displayProgressBar(viewModel.areAnyJobsActive())
+        })
+
+        viewModel.stateMessage.observe(viewLifecycleOwner, Observer { stateMessage ->
+
+            Log.d(TAG, "stack size: ${viewModel.getMessageStackSize()}")
+            Log.d(TAG, "state message: ${stateMessage}")
+            stateMessage?.let {
+                uiCommunicationListener.onResponseReceived(
+                    response = it.response,
+                    stateMessageCallback = object: StateMessageCallback {
+                        override fun removeMessageFromStack() {
+                            viewModel.clearStateMessage()
+                        }
+                    }
+                )
             }
         })
     }
 
-    private fun setAccountDetails(accountProperties: AccountProperties) {
-        input_email?.let {
+    private fun setAccountDataFields(accountProperties: AccountProperties){
+        if(input_email.text.isNullOrBlank()){
             input_email.setText(accountProperties.email)
         }
-        input_username?.let {
+        if(input_username.text.isNullOrBlank()){
             input_username.setText(accountProperties.username)
         }
     }
 
-    private fun saveChanges() {
+    private fun saveChanges(){
         viewModel.setStateEvent(
             AccountStateEvent.UpdateAccountPropertiesEvent(
                 input_email.text.toString(),
                 input_username.text.toString()
             )
         )
-        dataStateChangeListener.hideSoftKeyboard()
+        uiCommunicationListener.hideSoftKeyboard()
     }
 
     override fun onCreateOptionsMenu(menu: Menu, inflater: MenuInflater) {
-        super.onCreateOptionsMenu(menu, inflater)
         inflater.inflate(R.menu.update_menu, menu)
     }
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
-        when (item.itemId) {
+        when(item.itemId){
             R.id.save -> {
                 saveChanges()
                 return true
@@ -107,4 +116,5 @@ class UpdateAccountFragment @Inject constructor(
         }
         return super.onOptionsItemSelected(item)
     }
+
 }

@@ -1,55 +1,95 @@
 package com.rahul.openapi.ui
 
 import android.app.Activity
+import android.util.Log
 import android.widget.Toast
+import androidx.annotation.StringRes
 import com.afollestad.materialdialogs.MaterialDialog
 import com.rahul.openapi.R
 
+private const val TAG: String = "AppDebug"
 
-fun Activity.displayToast(message: String) {
+fun Activity.displayToast(message: String, stateMessageCallback: StateMessageCallback) {
     Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
+    stateMessageCallback.removeMessageFromStack()
 }
 
-fun Activity.displaySuccessDialog(message: String?) {
-    MaterialDialog(this).show {
-        title(R.string.text_success)
-        message(text = message)
-        positiveButton(R.string.text_ok)
-    }
+fun Activity.displayToast(
+    @StringRes message: Int, stateMessageCallback: StateMessageCallback
+) {
+    Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
+    stateMessageCallback.removeMessageFromStack()
 }
 
-fun Activity.displayErrorDialog(message: String?) {
-    MaterialDialog(this).show {
-        title(R.string.text_error)
-        message(text = message)
-        positiveButton(R.string.text_ok)
-    }
-
-}
-
-fun Activity.displayInfoDialog(msg: String?) {
-    MaterialDialog(this).show {
-        title(R.string.text_info)
-        message(text = msg)
-        positiveButton(R.string.text_ok)
-    }
-}
-
-fun Activity.areYouSureDialog(msg: String?, callback: AreyouSureCallback) {
-    MaterialDialog(this).show {
-        title(R.string.are_you_sure)
-        message(text = msg)
-        positiveButton(R.string.text_yes) {
-            callback.proceed()
+fun Activity.displaySuccessDialog(
+    message: String?,
+    stateMessageCallback: StateMessageCallback
+){
+    MaterialDialog(this)
+        .show{
+            title(R.string.text_success)
+            message(text = message)
+            positiveButton(R.string.text_ok)
+            setOnDismissListener {
+                stateMessageCallback.removeMessageFromStack()
+            }
         }
-
-        negativeButton(R.string.text_cancel) {
-            callback.cancel()
-        }
-    }
 }
 
-interface AreyouSureCallback {
+fun Activity.displayErrorDialog(
+    message: String?,
+    stateMessageCallback: StateMessageCallback
+){
+    MaterialDialog(this)
+        .show{
+            title(R.string.text_error)
+            message(text = message)
+            positiveButton(R.string.text_ok)
+            setOnDismissListener {
+                Log.d(TAG, "dismissing dialog: ")
+                stateMessageCallback.removeMessageFromStack()
+            }
+        }
+}
+
+fun Activity.displayInfoDialog(
+    message: String?,
+    stateMessageCallback: StateMessageCallback
+){
+    MaterialDialog(this)
+        .show{
+            title(R.string.text_info)
+            message(text = message)
+            positiveButton(R.string.text_ok)
+            setOnDismissListener {
+                stateMessageCallback.removeMessageFromStack()
+            }
+        }
+}
+
+fun Activity.areYouSureDialog(
+    message: String,
+    callback: AreYouSureCallback,
+    stateMessageCallback: StateMessageCallback
+){
+    MaterialDialog(this)
+        .show{
+            title(R.string.are_you_sure)
+            message(text = message)
+            negativeButton(R.string.text_cancel){
+                callback.cancel()
+            }
+            positiveButton(R.string.text_yes){
+                callback.proceed()
+            }
+            setOnDismissListener {
+                stateMessageCallback.removeMessageFromStack()
+            }
+        }
+}
+
+
+interface AreYouSureCallback {
     fun cancel()
 
     fun proceed()

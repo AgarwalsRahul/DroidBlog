@@ -1,18 +1,40 @@
 package com.rahul.openapi.ui.main.account.state
 
-sealed class AccountStateEvent {
+import com.rahul.openapi.util.StateEvent
 
-    class GetAccountPropertiesEvent() : AccountStateEvent()
+sealed class AccountStateEvent : StateEvent {
 
-    data class UpdateAccountPropertiesEvent(val email: String, val username: String) :
-        AccountStateEvent()
+    class GetAccountPropertiesEvent : AccountStateEvent() {
+
+        override fun errorInfo(): String {
+            return "Error retrieving account properties."
+        }
+    }
+
+    data class UpdateAccountPropertiesEvent(
+        val email: String,
+        val username: String
+    ) : AccountStateEvent() {
+
+        override fun errorInfo(): String {
+            return "Error updating account properties."
+        }
+    }
 
     data class ChangePasswordEvent(
         val currentPassword: String,
         val newPassword: String,
         val confirmNewPassword: String
-    ) : AccountStateEvent()
+    ) : AccountStateEvent() {
 
-    class None:AccountStateEvent()
+        override fun errorInfo(): String {
+            return "Error changing password."
+        }
+    }
 
+    class None : AccountStateEvent() {
+        override fun errorInfo(): String {
+            return "None"
+        }
+    }
 }

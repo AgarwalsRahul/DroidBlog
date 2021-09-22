@@ -1,26 +1,38 @@
 package com.rahul.openapi.ui.auth
 
+import android.content.Context
 import android.os.Bundle
-import android.view.LayoutInflater
+import android.util.Log
 import android.view.View
-import android.view.ViewGroup
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
+import androidx.lifecycle.Observer
 import androidx.lifecycle.ViewModelProvider
 import com.rahul.openapi.R
 import com.rahul.openapi.di.auth.AuthScope
-import com.rahul.openapi.ui.auth.state.AuthStateEvent
+import com.rahul.openapi.ui.UICommunicationListener
+import com.rahul.openapi.ui.auth.state.AuthStateEvent.RegisterAttemptEvent
 import com.rahul.openapi.ui.auth.state.RegistrationFields
-
-
 import kotlinx.android.synthetic.main.fragment_register.*
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.FlowPreview
 import javax.inject.Inject
 
+@FlowPreview
+@ExperimentalCoroutinesApi
 @AuthScope
-class RegisterFragment @Inject constructor(private val viewModelProviderFactory: ViewModelProvider.Factory) :
-    Fragment(R.layout.fragment_register) {
-    val viewModel: AuthViewModel by viewModels {
-        viewModelProviderFactory
+class RegisterFragment
+@Inject
+constructor(
+    private val viewModelFactory: ViewModelProvider.Factory
+): Fragment(R.layout.fragment_register) {
+
+    private val TAG: String = "AppDebug"
+
+    lateinit var uiCommunicationListener: UICommunicationListener
+
+    val viewModel: AuthViewModel by viewModels{
+        viewModelFactory
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -28,40 +40,29 @@ class RegisterFragment @Inject constructor(private val viewModelProviderFactory:
         viewModel.cancelActiveJobs()
     }
 
-
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        subscribeObservers()
+
         register_button.setOnClickListener {
             register()
         }
+        subscribeObservers()
     }
 
-    private fun subscribeObservers() {
-        viewModel.viewState.observe(viewLifecycleOwner, { viewState ->
-            viewState?.let { authViewState ->
-                authViewState.registrationFields?.let { registrationFields ->
-                    registrationFields.registration_email?.let {
-                        input_email.setText(it)
-                    }
-
-                    registrationFields.registration_username?.let {
-                        input_username.setText(it)
-                    }
-                    registrationFields.registration_password?.let {
-                        input_password.setText(it)
-                    }
-                    registrationFields.registration_confirm_password?.let {
-                        input_password_confirm.setText(it)
-                    }
-                }
+    fun subscribeObservers(){
+        viewModel.viewState.observe(viewLifecycleOwner, Observer{viewState ->
+            viewState.registrationFields?.let {
+                it.registration_email?.let{input_email.setText(it)}
+                it.registration_username?.let{input_username.setText(it)}
+                it.registration_password?.let{input_password.setText(it)}
+                it.registration_confirm_password?.let{input_password_confirm.setText(it)}
             }
         })
     }
 
-    private fun register() {
+    fun register(){
         viewModel.setStateEvent(
-            AuthStateEvent.RegisterEvent(
+            RegisterAttemptEvent(
                 input_email.text.toString(),
                 input_username.text.toString(),
                 input_password.text.toString(),
@@ -74,11 +75,20 @@ class RegisterFragment @Inject constructor(private val viewModelProviderFactory:
         super.onDestroyView()
         viewModel.setRegistrationFields(
             RegistrationFields(
-                registration_email = input_email.text.toString(),
-                registration_username = input_username.text.toString(),
-                registration_password = input_password.text.toString(),
-                registration_confirm_password = input_password_confirm.text.toString()
+                input_email.text.toString(),
+                input_username.text.toString(),
+                input_password.text.toString(),
+                input_password_confirm.text.toString()
             )
         )
+    }
+
+    override fun onAttach(context: Context) {
+        super.onAttach(context)
+        try{
+            uiCommunicationListener = context as UICommunicationListener
+        }catch(e: ClassCastException){
+            Log.e(TAG, "$context must implement UICommunicationListener" )
+        }
     }
 }

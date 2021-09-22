@@ -13,7 +13,6 @@ import com.rahul.openapi.persistence.AppDatabase
 import com.rahul.openapi.persistence.AppDatabase.Companion.DATABASE_NAME
 import com.rahul.openapi.persistence.AuthTokenDao
 import com.rahul.openapi.util.Constants
-import com.rahul.openapi.util.LiveDataCallAdapterFactory
 import com.rahul.openapi.util.PreferenceKeys
 import com.google.gson.Gson
 import com.google.gson.GsonBuilder
@@ -38,7 +37,6 @@ object AppModule {
     fun provideRetrofitBuilder(gsonBuilder: Gson): Retrofit.Builder {
         return Retrofit.Builder().baseUrl(Constants.BASE_URL)
             .addConverterFactory(GsonConverterFactory.create(gsonBuilder))
-            .addCallAdapterFactory(LiveDataCallAdapterFactory())
     }
 
     @JvmStatic

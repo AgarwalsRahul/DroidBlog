@@ -1,6 +1,18 @@
 package com.rahul.openapi.ui
 
+
 interface UICommunicationListener {
 
-    fun onUIMessageRecieved(uiMessage: UIMessage)
+    fun onResponseReceived(
+        response: Response,
+        stateMessageCallback: StateMessageCallback
+    )
+
+    fun displayProgressBar(isLoading: Boolean)
+
+    fun expandAppBar()
+
+    fun hideSoftKeyboard()
+
+    fun isStoragePermissionGranted(): Boolean
 }
